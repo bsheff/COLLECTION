@@ -33,6 +33,7 @@ data class AddEditFormState(
     val provenance: String = "",
     val location: String = "",
     val tags: String = "",
+    val originalDateAdded: Long? = null,
     val isSaving: Boolean = false,
     val error: String? = null
 )
@@ -48,6 +49,8 @@ class AddEditViewModel(
         AddEditFormState(type = CollectionType.valueOf(initialType))
     )
     val form: StateFlow<AddEditFormState> = _form.asStateFlow()
+
+    val isEditing: Boolean get() = editItemId != null
 
     val watchBrands: StateFlow<List<Brand>> = brandRepository.getBrandsByType(CollectionType.WATCH)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -85,7 +88,8 @@ class AddEditViewModel(
                         notes = item.notes ?: "",
                         provenance = item.provenance ?: "",
                         location = item.location ?: "",
-                        tags = item.tags ?: ""
+                        tags = item.tags ?: "",
+                        originalDateAdded = item.dateAdded
                     )
                 }
             }
@@ -137,7 +141,7 @@ class AddEditViewModel(
                 provenance = f.provenance.ifBlank { null },
                 location = f.location.ifBlank { null },
                 tags = f.tags.ifBlank { null },
-                dateAdded = if (editItemId != null) now else now,
+                dateAdded = f.originalDateAdded ?: now,
                 lastModified = now
             )
 

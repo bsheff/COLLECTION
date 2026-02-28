@@ -49,7 +49,7 @@ fun AddEditScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (viewModel.form.value.brand.isEmpty()) "Add Item" else "Edit Item",
+                        if (viewModel.isEditing) "Edit Item" else "Add Item",
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
