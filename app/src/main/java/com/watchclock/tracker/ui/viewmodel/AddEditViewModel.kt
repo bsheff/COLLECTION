@@ -7,6 +7,7 @@ import com.watchclock.tracker.data.model.*
 import com.watchclock.tracker.data.repository.BrandRepository
 import com.watchclock.tracker.data.repository.ItemRepository
 import com.watchclock.tracker.util.ImageHelper
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
@@ -52,10 +53,11 @@ class AddEditViewModel(
 
     val isEditing: Boolean get() = editItemId != null
 
-    val watchBrands: StateFlow<List<Brand>> = brandRepository.getBrandsByType(CollectionType.WATCH)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val clockBrands: StateFlow<List<Brand>> = brandRepository.getBrandsByType(CollectionType.CLOCK)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val brands: StateFlow<List<Brand>> = _form
+        .map { it.type }
+        .distinctUntilChanged()
+        .flatMapLatest { type -> brandRepository.getBrandsByType(type) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {

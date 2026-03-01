@@ -2,6 +2,7 @@ package com.watchclock.tracker.ui.screens.home
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.watchclock.tracker.data.model.CollectionType
 import com.watchclock.tracker.ui.components.ItemCard
 import com.watchclock.tracker.ui.components.StatCard
+import com.watchclock.tracker.ui.components.icon
 import com.watchclock.tracker.ui.viewmodel.HomeViewModel
 import com.watchclock.tracker.util.CurrencyHelper
 
@@ -22,8 +24,7 @@ import com.watchclock.tracker.util.CurrencyHelper
 fun HomeScreen(
     viewModel: HomeViewModel,
     paddingValues: PaddingValues,
-    onNavigateToWatches: () -> Unit,
-    onNavigateToClocks: () -> Unit,
+    onNavigateToCollections: (CollectionType) -> Unit,
     onNavigateToDetail: (Long) -> Unit,
     onNavigateToAdd: (String) -> Unit
 ) {
@@ -45,19 +46,10 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            Column {
-                SmallFloatingActionButton(
-                    onClick = { onNavigateToAdd("CLOCK") },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                ) {
-                    Icon(Icons.Filled.Schedule, contentDescription = "Add Clock")
-                }
-                Spacer(Modifier.height(8.dp))
-                FloatingActionButton(
-                    onClick = { onNavigateToAdd("WATCH") }
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add Watch")
-                }
+            FloatingActionButton(
+                onClick = { onNavigateToAdd(CollectionType.WATCH.name) }
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Add Item")
             }
         }
     ) { innerPadding ->
@@ -83,20 +75,18 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    val totalCount = stats.countByType.values.sum()
                     StatCard(
-                        title = "Watches",
-                        value = stats.watchCount.toString(),
-                        icon = Icons.Filled.Watch,
-                        modifier = Modifier.weight(1f),
-                        subtitle = CurrencyHelper.formatCompact(stats.totalWatchValue)
+                        title = "Total Items",
+                        value = totalCount.toString(),
+                        icon = Icons.Filled.Inventory2,
+                        modifier = Modifier.weight(1f)
                     )
                     StatCard(
-                        title = "Clocks",
-                        value = stats.clockCount.toString(),
-                        icon = Icons.Filled.Schedule,
-                        modifier = Modifier.weight(1f),
-                        subtitle = CurrencyHelper.formatCompact(stats.totalClockValue),
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        title = "Total Value",
+                        value = CurrencyHelper.formatCompact(stats.totalValue),
+                        icon = Icons.Filled.TrendingUp,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
@@ -106,21 +96,46 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    val totalValue = (stats.totalWatchValue ?: 0.0) + (stats.totalClockValue ?: 0.0)
-                    val totalCost = (stats.totalWatchCost ?: 0.0) + (stats.totalClockCost ?: 0.0)
-                    StatCard(
-                        title = "Total Value",
-                        value = CurrencyHelper.formatCompact(totalValue.takeIf { it > 0 }),
-                        icon = Icons.Filled.TrendingUp,
-                        modifier = Modifier.weight(1f)
-                    )
                     StatCard(
                         title = "Total Cost",
-                        value = CurrencyHelper.formatCompact(totalCost.takeIf { it > 0 }),
+                        value = CurrencyHelper.formatCompact(stats.totalCost),
                         icon = Icons.Filled.ShoppingCart,
                         modifier = Modifier.weight(1f),
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer
                     )
+                    StatCard(
+                        title = "Collections",
+                        value = stats.countByType.size.toString(),
+                        icon = Icons.Filled.CollectionsBookmark,
+                        modifier = Modifier.weight(1f),
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                }
+            }
+
+            if (stats.countByType.isNotEmpty()) {
+                item {
+                    Text(
+                        "By Collection",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+                item {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(stats.countByType.entries.toList()) { (type, count) ->
+                            StatCard(
+                                title = type.displayName,
+                                value = count.toString(),
+                                icon = type.icon(),
+                                modifier = Modifier.width(140.dp),
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                onClick = { onNavigateToCollections(type) }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -131,9 +146,8 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Recent Items", style = MaterialTheme.typography.titleLarge)
-                    Row {
-                        TextButton(onClick = onNavigateToWatches) { Text("Watches") }
-                        TextButton(onClick = onNavigateToClocks) { Text("Clocks") }
+                    TextButton(onClick = { onNavigateToCollections(CollectionType.WATCH) }) {
+                        Text("View All")
                     }
                 }
             }
@@ -148,7 +162,7 @@ fun HomeScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                Icons.Filled.WatchOff,
+                                Icons.Filled.Inventory2,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
