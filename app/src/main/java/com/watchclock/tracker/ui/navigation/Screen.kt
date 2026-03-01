@@ -1,9 +1,13 @@
 package com.watchclock.tracker.ui.navigation
 
+import com.watchclock.tracker.data.model.CollectionType
+
 sealed class Screen(val route: String) {
     object Home : Screen("home")
-    object Watches : Screen("watches")
-    object Clocks : Screen("clocks")
+    object Collections : Screen("collections?type={type}") {
+        fun createRoute(type: CollectionType = CollectionType.WATCH) =
+            "collections?type=${type.name}"
+    }
     object Brands : Screen("brands")
     object Settings : Screen("settings")
 

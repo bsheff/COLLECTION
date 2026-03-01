@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.*
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -29,8 +30,7 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem(Screen.Home, "Home", Icons.Filled.Home),
-    BottomNavItem(Screen.Watches, "Watches", Icons.Filled.Watch),
-    BottomNavItem(Screen.Clocks, "Clocks", Icons.Filled.Schedule),
+    BottomNavItem(Screen.Collections, "Collections", Icons.Filled.CollectionsBookmark),
     BottomNavItem(Screen.Brands, "Brands", Icons.Filled.MenuBook),
     BottomNavItem(Screen.Settings, "Settings", Icons.Filled.Settings)
 )
@@ -52,19 +52,30 @@ fun NavGraph() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val showBottomBar = bottomNavItems.any { it.screen.route == currentRoute }
+    val showBottomBar = bottomNavItems.any {
+        it.screen.route == currentRoute ||
+        (it.screen is Screen.Collections && currentRoute?.startsWith("collections") == true)
+    }
 
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
                     bottomNavItems.forEach { item ->
+                        val selected = when (item.screen) {
+                            is Screen.Collections -> currentRoute?.startsWith("collections") == true
+                            else -> currentRoute == item.screen.route
+                        }
                         NavigationBarItem(
                             icon = { Icon(item.icon, contentDescription = item.label) },
                             label = { Text(item.label) },
-                            selected = currentRoute == item.screen.route,
+                            selected = selected,
                             onClick = {
-                                navController.navigate(item.screen.route) {
+                                navController.navigate(
+                                    if (item.screen is Screen.Collections)
+                                        Screen.Collections.createRoute()
+                                    else item.screen.route
+                                ) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }
@@ -88,8 +99,9 @@ fun NavGraph() {
                 HomeScreen(
                     viewModel = viewModel,
                     paddingValues = paddingValues,
-                    onNavigateToWatches = { navController.navigate(Screen.Watches.route) },
-                    onNavigateToClocks = { navController.navigate(Screen.Clocks.route) },
+                    onNavigateToCollections = { type ->
+                        navController.navigate(Screen.Collections.createRoute(type))
+                    },
                     onNavigateToDetail = { id ->
                         navController.navigate(Screen.Detail.createRoute(id))
                     },
@@ -99,34 +111,31 @@ fun NavGraph() {
                 )
             }
 
-            composable(Screen.Watches.route) {
-                val factory = ListViewModelFactory(itemRepository, CollectionType.WATCH)
-                val viewModel: ListViewModel = viewModel(factory = factory)
-                ListScreen(
-                    viewModel = viewModel,
-                    type = CollectionType.WATCH,
-                    paddingValues = paddingValues,
-                    onNavigateToDetail = { id ->
-                        navController.navigate(Screen.Detail.createRoute(id))
-                    },
-                    onNavigateToAdd = {
-                        navController.navigate(Screen.AddEdit.createRoute(type = "WATCH"))
+            composable(
+                route = Screen.Collections.route,
+                arguments = listOf(
+                    navArgument("type") {
+                        type = NavType.StringType
+                        defaultValue = "WATCH"
                     }
                 )
-            }
-
-            composable(Screen.Clocks.route) {
-                val factory = ListViewModelFactory(itemRepository, CollectionType.CLOCK)
+            ) { backStackEntry ->
+                val typeStr = backStackEntry.arguments?.getString("type") ?: "WATCH"
+                val initialType = runCatching { CollectionType.valueOf(typeStr) }
+                    .getOrDefault(CollectionType.WATCH)
+                val factory = ListViewModelFactory(itemRepository, initialType)
                 val viewModel: ListViewModel = viewModel(factory = factory)
+                val currentType by viewModel.collectionType.collectAsStateWithLifecycle()
                 ListScreen(
                     viewModel = viewModel,
-                    type = CollectionType.CLOCK,
                     paddingValues = paddingValues,
                     onNavigateToDetail = { id ->
                         navController.navigate(Screen.Detail.createRoute(id))
                     },
                     onNavigateToAdd = {
-                        navController.navigate(Screen.AddEdit.createRoute(type = "CLOCK"))
+                        navController.navigate(
+                            Screen.AddEdit.createRoute(type = currentType.name)
+                        )
                     }
                 )
             }

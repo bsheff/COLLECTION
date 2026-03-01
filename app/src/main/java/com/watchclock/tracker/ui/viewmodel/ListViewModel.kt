@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.*
 
 class ListViewModel(
     private val repository: ItemRepository,
-    val collectionType: CollectionType
+    initialType: CollectionType
 ) : ViewModel() {
+
+    private val _collectionType = MutableStateFlow(initialType)
+    val collectionType: StateFlow<CollectionType> = _collectionType.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -23,19 +26,29 @@ class ListViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val items: StateFlow<List<CollectionItem>> = combine(
-        _searchQuery, _selectedBrand
-    ) { query, brand -> Pair(query, brand) }
-        .flatMapLatest { (query, brand) ->
+        _collectionType, _searchQuery, _selectedBrand
+    ) { type, query, brand -> Triple(type, query, brand) }
+        .flatMapLatest { (type, query, brand) ->
             repository.searchItems(
-                type = collectionType,
+                type = type,
                 brand = brand,
                 query = query.ifBlank { null }
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val brands: StateFlow<List<String>> = repository.getBrandsByType(collectionType)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val brands: StateFlow<List<String>> = _collectionType
+        .flatMapLatest { type -> repository.getBrandsByType(type) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun setCollectionType(type: CollectionType) {
+        if (_collectionType.value != type) {
+            _collectionType.value = type
+            _selectedBrand.value = null
+            _searchQuery.value = ""
+        }
+    }
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
 

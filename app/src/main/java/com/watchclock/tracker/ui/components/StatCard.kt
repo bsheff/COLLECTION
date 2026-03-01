@@ -1,5 +1,6 @@
 package com.watchclock.tracker.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -7,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -17,10 +17,11 @@ fun StatCard(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primaryContainer
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primaryContainer,
+    onClick: (() -> Unit)? = null
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.let { if (onClick != null) it.clickable(onClick = onClick) else it },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)

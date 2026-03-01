@@ -26,6 +26,12 @@ private val MOVEMENT_TYPES = listOf("Manual", "Automatic", "Quartz", "Electric")
 private val ERAS = listOf("Victorian", "Edwardian", "Art Nouveau", "Art Deco", "Mid-Century", "Modern")
 private val WATCH_CATEGORIES = listOf("Pocket Watch", "Wristwatch", "Dress Watch", "Sport Watch", "Diving Watch")
 private val CLOCK_CATEGORIES = listOf("Mantel Clock", "Wall Clock", "Grandfather Clock", "Bracket Clock", "Carriage Clock", "Cuckoo Clock")
+private val BOOK_CATEGORIES = listOf("Fiction", "Non-Fiction", "First Edition", "Antique", "Illustrated", "Reference", "Children's")
+private val FURNITURE_CATEGORIES = listOf("Chair", "Table", "Cabinet", "Dresser", "Bookcase", "Sofa", "Desk", "Mirror", "Chest")
+private val COIN_CATEGORIES = listOf("Circulated", "Uncirculated", "Proof", "Bullion", "Ancient", "Foreign", "Error Coin")
+private val STAMP_CATEGORIES = listOf("Mint", "Used", "First Day Cover", "Block", "Sheet", "Error", "Airmail")
+private val JEWELRY_CATEGORIES = listOf("Ring", "Necklace", "Bracelet", "Earrings", "Brooch", "Pin", "Watch")
+private val OTHER_CATEGORIES = emptyList<String>()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,14 +41,20 @@ fun AddEditScreen(
     onSaved: () -> Unit
 ) {
     val form by viewModel.form.collectAsStateWithLifecycle()
-    val watchBrands by viewModel.watchBrands.collectAsStateWithLifecycle()
-    val clockBrands by viewModel.clockBrands.collectAsStateWithLifecycle()
+    val brands by viewModel.brands.collectAsStateWithLifecycle()
 
-    val brandSuggestions = remember(form.type, watchBrands, clockBrands) {
-        (if (form.type == CollectionType.WATCH) watchBrands else clockBrands).map { it.name }
+    val brandSuggestions = remember(brands) { brands.map { it.name } }
+
+    val categoryOptions = when (form.type) {
+        CollectionType.WATCH -> WATCH_CATEGORIES
+        CollectionType.CLOCK -> CLOCK_CATEGORIES
+        CollectionType.BOOK -> BOOK_CATEGORIES
+        CollectionType.ANTIQUE_FURNITURE -> FURNITURE_CATEGORIES
+        CollectionType.COIN -> COIN_CATEGORIES
+        CollectionType.STAMP -> STAMP_CATEGORIES
+        CollectionType.JEWELRY -> JEWELRY_CATEGORIES
+        CollectionType.OTHER -> OTHER_CATEGORIES
     }
-
-    val categoryOptions = if (form.type == CollectionType.WATCH) WATCH_CATEGORIES else CLOCK_CATEGORIES
 
     Scaffold(
         topBar = {
@@ -85,7 +97,7 @@ fun AddEditScreen(
                     FilterChip(
                         selected = form.type == type,
                         onClick = { viewModel.update { copy(type = type) } },
-                        label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                        label = { Text(type.displayName) }
                     )
                 }
             }

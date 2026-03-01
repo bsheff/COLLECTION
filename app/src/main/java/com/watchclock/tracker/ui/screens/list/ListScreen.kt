@@ -17,30 +17,68 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.watchclock.tracker.data.model.CollectionType
 import com.watchclock.tracker.ui.components.ItemCard
+import com.watchclock.tracker.ui.components.icon
 import com.watchclock.tracker.ui.viewmodel.ListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListScreen(
     viewModel: ListViewModel,
-    type: CollectionType,
     paddingValues: PaddingValues,
     onNavigateToDetail: (Long) -> Unit,
     onNavigateToAdd: () -> Unit
 ) {
+    val collectionType by viewModel.collectionType.collectAsStateWithLifecycle()
     val items by viewModel.items.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedBrand by viewModel.selectedBrand.collectAsStateWithLifecycle()
     val brands by viewModel.brands.collectAsStateWithLifecycle()
     val isGridView by viewModel.isGridView.collectAsStateWithLifecycle()
 
-    val title = if (type == CollectionType.WATCH) "Watches" else "Clocks"
+    var typeDropdownExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text(title, style = MaterialTheme.typography.headlineMedium) },
+                    title = {
+                        Box {
+                            TextButton(
+                                onClick = { typeDropdownExpanded = true },
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                            ) {
+                                Text(
+                                    collectionType.displayName,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Icon(
+                                    Icons.Filled.ArrowDropDown,
+                                    contentDescription = "Switch collection type",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = typeDropdownExpanded,
+                                onDismissRequest = { typeDropdownExpanded = false }
+                            ) {
+                                CollectionType.entries.forEach { type ->
+                                    DropdownMenuItem(
+                                        text = { Text(type.displayName) },
+                                        onClick = {
+                                            viewModel.setCollectionType(type)
+                                            typeDropdownExpanded = false
+                                        },
+                                        leadingIcon = {
+                                            if (collectionType == type) {
+                                                Icon(Icons.Filled.Check, contentDescription = null)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    },
                     actions = {
                         IconButton(onClick = { viewModel.toggleViewMode() }) {
                             Icon(
@@ -108,14 +146,15 @@ fun ListScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            if (type == CollectionType.WATCH) Icons.Filled.Watch else Icons.Filled.Schedule,
+                            collectionType.icon(),
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            text = if (searchQuery.isNotEmpty()) "No results found" else "No ${title.lowercase()} yet",
+                            text = if (searchQuery.isNotEmpty()) "No results found"
+                            else "No ${collectionType.displayName.lowercase()} yet",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
