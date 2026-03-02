@@ -1,17 +1,29 @@
 package com.watchclock.tracker.ui.screens.addedit
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.SubcomposeAsyncImage
 import com.watchclock.tracker.data.model.CollectionType
 import com.watchclock.tracker.data.model.Feature
 import com.watchclock.tracker.ui.components.AutocompleteTextField
@@ -37,12 +49,19 @@ fun AddEditScreen(
     val form by viewModel.form.collectAsStateWithLifecycle()
     val watchBrands by viewModel.watchBrands.collectAsStateWithLifecycle()
     val clockBrands by viewModel.clockBrands.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     val brandSuggestions = remember(form.type, watchBrands, clockBrands) {
         (if (form.type == CollectionType.WATCH) watchBrands else clockBrands).map { it.name }
     }
 
     val categoryOptions = if (form.type == CollectionType.WATCH) WATCH_CATEGORIES else CLOCK_CATEGORIES
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        uris.forEach { viewModel.addPendingPhoto(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -62,7 +81,7 @@ fun AddEditScreen(
                     if (form.isSaving) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(end = 8.dp))
                     } else {
-                        IconButton(onClick = { viewModel.saveItem(onSaved) }) {
+                        IconButton(onClick = { viewModel.saveItem(context, onSaved) }) {
                             Icon(Icons.Filled.Check, contentDescription = "Save")
                         }
                     }
@@ -222,6 +241,17 @@ fun AddEditScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            SectionLabel("Photos")
+            PendingPhotosSection(
+                pendingUris = form.pendingPhotoUris,
+                onAddPhotos = {
+                    photoPicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
+                onRemovePhoto = { viewModel.removePendingPhoto(it) }
+            )
+
             SectionLabel("Additional Details")
 
             OutlinedTextField(
@@ -267,7 +297,7 @@ fun AddEditScreen(
             Spacer(Modifier.height(16.dp))
 
             Button(
-                onClick = { viewModel.saveItem(onSaved) },
+                onClick = { viewModel.saveItem(context, onSaved) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !form.isSaving
             ) {
@@ -297,4 +327,66 @@ private fun SectionLabel(text: String) {
         modifier = Modifier.padding(top = 8.dp)
     )
     HorizontalDivider()
+}
+
+@Composable
+private fun PendingPhotosSection(
+    pendingUris: List<Uri>,
+    onAddPhotos: () -> Unit,
+    onRemovePhoto: (Uri) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        OutlinedButton(
+            onClick = onAddPhotos,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(if (pendingUris.isEmpty()) "Add Photos" else "Add More Photos")
+        }
+        if (pendingUris.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(pendingUris) { uri ->
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    ) {
+                        SubcomposeAsyncImage(
+                            model = uri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                            loading = {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(Modifier.size(24.dp))
+                                }
+                            }
+                        )
+                        IconButton(
+                            onClick = { onRemovePhoto(uri) },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(24.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.errorContainer,
+                                    CircleShape
+                                )
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Remove photo",
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
