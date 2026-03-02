@@ -34,6 +34,7 @@ data class AddEditFormState(
     val location: String = "",
     val tags: String = "",
     val originalDateAdded: Long? = null,
+    val pendingPhotoUris: List<Uri> = emptyList(),
     val isSaving: Boolean = false,
     val error: String? = null
 )
@@ -107,7 +108,7 @@ class AddEditViewModel(
         )
     }
 
-    fun saveItem(onSuccess: () -> Unit) {
+    fun saveItem(context: Context, onSuccess: () -> Unit) {
         val f = _form.value
         if (f.brand.isBlank() || f.model.isBlank()) {
             _form.value = f.copy(error = "Brand and Model are required")
@@ -145,14 +146,38 @@ class AddEditViewModel(
                 lastModified = now
             )
 
+            val savedItemId: Long
             if (editItemId != null) {
                 itemRepository.updateItem(item)
+                savedItemId = editItemId
             } else {
-                itemRepository.insertItem(item)
+                savedItemId = itemRepository.insertItem(item)
             }
+
+            // Save any pending photos queued during editing
+            f.pendingPhotoUris.forEach { uri ->
+                val path = ImageHelper.saveAndCompressImage(context, uri, savedItemId)
+                if (path != null) {
+                    val photo = Photo(itemId = savedItemId, filePath = path)
+                    itemRepository.insertPhoto(photo)
+                }
+            }
+
             _form.value = _form.value.copy(isSaving = false)
             onSuccess()
         }
+    }
+
+    fun addPendingPhoto(uri: Uri) {
+        _form.value = _form.value.copy(
+            pendingPhotoUris = _form.value.pendingPhotoUris + uri
+        )
+    }
+
+    fun removePendingPhoto(uri: Uri) {
+        _form.value = _form.value.copy(
+            pendingPhotoUris = _form.value.pendingPhotoUris - uri
+        )
     }
 
     fun addPhoto(context: Context, uri: Uri, itemId: Long) {

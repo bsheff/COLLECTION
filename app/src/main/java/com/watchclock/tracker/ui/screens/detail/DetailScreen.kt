@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.watchclock.tracker.data.model.CollectionItem
 import com.watchclock.tracker.data.model.Feature
@@ -19,7 +20,7 @@ import com.watchclock.tracker.ui.viewmodel.DetailViewModel
 import com.watchclock.tracker.util.CurrencyHelper
 import kotlinx.serialization.json.Json
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(
     viewModel: DetailViewModel,
